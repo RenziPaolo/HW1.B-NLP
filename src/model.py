@@ -70,9 +70,16 @@ class BidirectionalLSTM(nn.Module):
     
 # MAIN
 if __name__ == '__main__' :
-    dataset = JSONLDataset(test=True, device='cuda')
+    
+    # Get the name of the GPU device
+    if torch.cuda.is_available():
+        device = 'cuda'
+    else:
+        device = 'cpu'
+
+    dataset = JSONLDataset(test=True, device=device)
     dataloader = DataLoader(dataset, batch_size=128, shuffle=True, collate_fn=dataset._collate_fn)
-    lstm = BidirectionalLSTM(len(dataset.get_vocabulary()), 128, 4, 0, 0, 'cuda')
+    lstm = BidirectionalLSTM(len(dataset.get_vocabulary()), 128, 4, 0, 0, device)
     for step, (sequence_lengths, inputs, labels) in enumerate(dataloader):
 
         predictions = lstm((sequence_lengths, inputs))

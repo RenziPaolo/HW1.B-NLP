@@ -45,7 +45,7 @@ class JSONLDataset(Dataset):
         else:
             file_path = "../data/haspeede3-task1-test-data.jsonl"
         try:
-            with open(file_path, 'r') as file:
+            with open(file_path, 'r', encoding='utf-8') as file:
                 data_list = [json.loads(line.strip()) for line in file]
                 return data_list
         except FileNotFoundError:
@@ -152,4 +152,3 @@ class JSONLDataset(Dataset):
 if __name__ == '__main__' :
     dataset = JSONLDataset(test=True, device='cuda')
     print(dataset[0])
-    print(len(dataset.get_vocabulary().state_dict()))
