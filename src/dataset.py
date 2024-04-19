@@ -2,16 +2,16 @@ import json
 import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
-from transformers import BertTokenizer
 from torchtext.vocab import Vocab, vocab
 from collections import Counter
+from git import Repo
 
 class JSONLDataset(Dataset):
     """
     PyTorch dataset class constructed from a dictionary, ideally read from JSON Lines (JSONL) file.
     """
 
-    def __init__(self, test: str, device: str) -> None: 
+    def __init__(self, test: bool, device: str, tokenizer) -> None: 
         """
         Initialize the dataset with a dictionary.
 
@@ -19,16 +19,15 @@ class JSONLDataset(Dataset):
         test (bool): True if the dataset is for testing, False otherwise.
         """
         self.data_dict = self.read_json_file(test)
-        self.max_length = self.find_max_length()
         self.device = device
         self.tokenizedData = []
-        tokenizer = BertTokenizer.from_pretrained("dbmdz/bert-base-italian-xxl-cased")
         for sample in self.data_dict:
             text = sample['text']  # Assuming 'text' is the key for the text data
             tokenizedText = [token for token in tokenizer.tokenize(text)]  # Tokenizing text
             label = 0 if sample['label'] == 'si' else 1
             self.tokenizedData.append({'text': tokenizedText, 'label': label})
         self.indexedData = None
+        #self.index(self.get_vocabulary())
 
     def read_json_file(self, test:  bool) -> list:
         """
@@ -40,10 +39,14 @@ class JSONLDataset(Dataset):
         Returns:
         dict: The JSON data as a dictionary.
         """
+        repo =  Repo(".", search_parent_directories=True)
+
+        root_dir = repo.git.rev_parse("--show-toplevel")
+
         if test:
-            file_path = "../data/haspeede3-task1-test-data.jsonl"
+            file_path = root_dir+"/data/haspeede3-task1-test-data.jsonl"
         else:
-            file_path = "../data/haspeede3-task1-test-data.jsonl"
+            file_path = root_dir+"/data/haspeede3-task1-test-data.jsonl"
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 data_list = [json.loads(line.strip()) for line in file]
@@ -72,20 +75,6 @@ class JSONLDataset(Dataset):
         dict: Dictionary containing the sample data.
         """
         return self.tokenizedData[idx]
-
-    def find_max_length(self):
-        """
-        Find the maximum sequence length in the dataset.
-
-        Returns:
-        int: Maximum sequence length.
-        """
-        max_length = 0
-        for sample in self.data_dict:
-            text = sample['text']  # Assuming 'text' is the key for the text data
-            length = len(text.split())
-            max_length = max(max_length, length)
-        return max_length
     
     def get_vocabulary(
         self,
@@ -123,7 +112,7 @@ class JSONLDataset(Dataset):
             for sample in batch:
                 # append the dictionary containing ids of the input tokens and label
                 indexedData.append({"input_ids": vocabulary(sample["text"]), "label": sample["label"]})
-        return indexedData
+            return indexedData
 
 
     def _collate_fn(self, batch: list[dict]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -138,9 +127,8 @@ class JSONLDataset(Dataset):
         """
         if "input_ids" not in batch[0].keys():
             batch = self.indexBatch(self.get_vocabulary(), batch)
-        for sample in batch:
-                sequence_lengths = torch.tensor([len(sample["input_ids"])], dtype=torch.long)
-        labels = [sample['label'] for sample in batch]
+        sequence_lengths = torch.tensor([len(sample["input_ids"]) for sample in batch], dtype=torch.long)
+        labels = torch.tensor([sample['label'] for sample in batch])
         padded_texts = pad_sequence( (
                 torch.tensor(sample["input_ids"], dtype=torch.long, device=self.device)
                 for sample in batch
@@ -150,5 +138,6 @@ class JSONLDataset(Dataset):
     
 # MAIN
 if __name__ == '__main__' :
-    dataset = JSONLDataset(test=True, device='cuda')
+    from transformers import BertTokenizer
+    dataset = JSONLDataset(test=True, device='cuda', tokenizer=BertTokenizer.from_pretrained("dbmdz/bert-base-italian-xxl-cased"))
     print(dataset[0])

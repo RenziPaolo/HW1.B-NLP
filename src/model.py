@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from dataset import JSONLDataset
 from torch.nn.utils.rnn import pack_padded_sequence
 from torch.utils.data import DataLoader
 
@@ -47,29 +46,30 @@ class BidirectionalLSTM(nn.Module):
         Returns:
         torch.Tensor: Output tensor of shape (batch_size, output_size).
         """
-        print(x[1].shape)
         # Get the different parts of the batch
-        input_ids, sequence_lengths = x
-
+        sequence_lengths, input_ids  = x
         embeds = self.embedding(input_ids.to(self.device))
-        print(embeds.shape)
         packed = pack_padded_sequence(embeds, sequence_lengths, batch_first=True, enforce_sorted=False)
 
         # Initialize hidden state with zeros
-        h0 = torch.rand(self.num_layers * 2, x.size(0), self.hidden_size).to(x.device)
+        h0 = torch.rand(self.num_layers * 2, input_ids.size(0), self.hidden_size).to(self.device)
         # Initialize cell state with zeros
-        c0 = torch.rand(self.num_layers * 2, x.size(0), self.hidden_size).to(x.device)
+        c0 = torch.rand(self.num_layers * 2, input_ids.size(0), self.hidden_size).to(self.device)
 
         # Forward propagate LSTM
-        out, _ = self.lstm(packed, (h0, c0))  # out shape: (batch_size, seq_length, hidden_size * 2)
-
+        packed_output, (hidden_state, cell_state) = self.lstm(packed, (h0, c0))  # out shape: (batch_size, seq_length, hidden_size * 2)
+        
+        hidden = torch.cat((hidden_state[-2,:,:], hidden_state[-1,:,:]), dim = 1)
+        
         # Decode the hidden state of the last time step
-        out = self.fc(out[:, -1, :])  # out shape: (batch_size, output_size)
+        out = self.fc(hidden)  # out shape: (batch_size, output_size)
 
         return out
     
 # MAIN
 if __name__ == '__main__' :
+    from dataset import JSONLDataset
+    from transformers import BertTokenizer
     
     # Get the name of the GPU device
     if torch.cuda.is_available():
@@ -77,9 +77,8 @@ if __name__ == '__main__' :
     else:
         device = 'cpu'
 
-    dataset = JSONLDataset(test=True, device=device)
+    dataset = JSONLDataset(test=True, device=device, tokenizer=BertTokenizer.from_pretrained("dbmdz/bert-base-italian-xxl-cased"))
     dataloader = DataLoader(dataset, batch_size=128, shuffle=True, collate_fn=dataset._collate_fn)
     lstm = BidirectionalLSTM(len(dataset.get_vocabulary()), 128, 4, 0, 0, device)
     for step, (sequence_lengths, inputs, labels) in enumerate(dataloader):
-
         predictions = lstm((sequence_lengths, inputs))
