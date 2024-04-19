@@ -7,4 +7,4 @@ class RandomBase(nn.module):
         super(RandomBase, self).__init__()
     
     def forward(self, x: list[torch.Tensor, torch.Tensor]) -> torch.Tensor:
-        return torch.rand([128, 2])
+        return torch.rand([x[0].size(0), 2])
