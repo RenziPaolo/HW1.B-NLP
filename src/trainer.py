@@ -9,12 +9,13 @@ class Trainer():
         self,
         model: nn.Module,
         optimizer: torch.optim.Optimizer,
+        loss_function: nn.Module,
         log_steps: int = 1_000,
         log_level: int = 2
     ):
         self.model = model
         self.optimizer = optimizer
-        self.loss_function = nn.CrossEntropyLoss() # this is the default loss used nearly everywhere in NLP
+        self.loss_function = loss_function # this is the default loss used nearly everywhere in NLP
 
         self.log_steps = log_steps
         self.log_level = log_level
@@ -37,7 +38,6 @@ class Trainer():
         assert epochs >= 1 and isinstance(epochs, int)
         if self.log_level > 0:
             print('Training ...')
-        train_loss = 0.0
 
         losses = {
             "train_losses": [],
@@ -153,5 +153,6 @@ class Trainer():
         with torch.no_grad():
             sequence_lengths, inputs = batch
             logits = self.model(sequence_lengths, inputs) # [B, 2]
-            predictions = torch.argmax(logits, -1) # [B, 1] computed on the last dimension of the logits tensor
+            probs = torch.sigmoid(logits)
+            predictions = (probs >0.5).float # [B, 1] computed on the last dimension of the logits tensor
             return logits, predictions

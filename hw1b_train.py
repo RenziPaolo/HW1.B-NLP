@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from src.trainer import Trainer
 from src.BidirectionalLSTM import BidirectionalLSTM
@@ -29,7 +30,9 @@ lstm = BidirectionalLSTM(len(dataset.get_vocabulary()), 128, 4, 0, 0, device)
 trainer = Trainer(
 model=lstm,
 optimizer=torch.optim.Adam(lstm.parameters(), lr=0.0001),
+loss_function=nn.BCEWithLogitsLoss(),
 log_steps=100
 )
+
 losses = trainer.train(train_loader, val_loader, epochs=10)
 

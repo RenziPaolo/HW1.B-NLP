@@ -36,7 +36,7 @@ class BidirectionalLSTM(nn.Module):
         self.lstm = nn.LSTM(hidden_size, hidden_size, num_layers, batch_first=True, bidirectional=True, dropout=bilstm_dropout, device=device)
 
         # Output layer
-        self.fc = nn.Linear(hidden_size * 2, 2, device=device)
+        self.fc = nn.Linear(hidden_size * 2, 1, device=device)
 
     def forward(self, x: list[torch.Tensor, torch.Tensor]) -> torch.Tensor:
         """
@@ -67,7 +67,7 @@ class BidirectionalLSTM(nn.Module):
         # Decode the hidden state of the last time step
         out = self.fc(hidden)  # out shape: (batch_size, output_size)
 
-        return out
+        return out.squeeze()
     
 # MAIN
 if __name__ == '__main__' :
