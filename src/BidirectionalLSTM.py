@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence
-from torch.utils.data import DataLoader
 
 class BidirectionalLSTM(nn.Module):
     """
@@ -74,6 +73,7 @@ class BidirectionalLSTM(nn.Module):
 if __name__ == '__main__' :
     from dataset import JSONLDataset
     from transformers import BertTokenizer
+    from torch.utils.data import DataLoader
     
     # Get the name of the GPU device
     if torch.cuda.is_available():

@@ -1,9 +1,10 @@
 import torch
 from torch.utils.data import DataLoader, random_split
 from src.trainer import Trainer
-from BidirectionalLSTM import BidirectionalLSTM
+from src.BidirectionalLSTM import BidirectionalLSTM
 from src.dataset import JSONLDataset
 from transformers import BertTokenizer
+
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -24,10 +25,11 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, co
 val_loader = DataLoader(val_dataset, batch_size=batch_size, collate_fn=dataset._collate_fn)
 
 lstm = BidirectionalLSTM(len(dataset.get_vocabulary()), 128, 4, 0, 0, device)
+
 trainer = Trainer(
 model=lstm,
 optimizer=torch.optim.Adam(lstm.parameters(), lr=0.0001),
 log_steps=100
 )
 losses = trainer.train(train_loader, val_loader, epochs=10)
-print(losses)
+

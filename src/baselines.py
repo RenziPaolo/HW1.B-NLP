@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 
-class RandomBase(nn.module):
+class RandomBase(nn.Module):
 
     def __init__(self):
         super(RandomBase, self).__init__()
