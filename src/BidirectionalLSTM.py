@@ -16,6 +16,7 @@ class BidirectionalLSTM(nn.Module):
         bilstm_dropout: float,
         padding_id: int,
         device: str = "cuda",
+        embedding: bool = True
     ) -> None:
 
         super(BidirectionalLSTM, self).__init__()
@@ -23,12 +24,14 @@ class BidirectionalLSTM(nn.Module):
         self.num_layers = num_layers
 
         # Embedding layer
-        self.embedding = nn.Embedding(
-            num_embeddings=vocabulary_length,
-            embedding_dim=hidden_size,
-            padding_idx=padding_id, # avoid updating the gradient of padding entries
-            device=device
-        )
+        self.embedding = embedding
+        if embedding:
+            self.embedding = nn.Embedding(
+                num_embeddings=vocabulary_length,
+                embedding_dim=hidden_size,
+                padding_idx=padding_id, # avoid updating the gradient of padding entries
+                device=device
+            )
         self.device = device
         # Bidirectional LSTM layer
         self.lstm = nn.LSTM(hidden_size, hidden_size, num_layers, batch_first=True, bidirectional=True, dropout=bilstm_dropout, device=device)
@@ -41,14 +44,15 @@ class BidirectionalLSTM(nn.Module):
         Forward pass of the Bidirectional LSTM model.
 
         Args:
-        x (torch.Tensor): Input tensor of shape (batch_size, input_size).
+        x (torch.Tensor): Input tensor of shape (sequence_lengths, input_ids).
 
         Returns:
         torch.Tensor: Output tensor of shape (batch_size, output_size).
         """
         # Get the different parts of the batch
         sequence_lengths, input_ids  = x
-        embeds = self.embedding(input_ids.to(self.device))
+        if self.embedding:
+            embeds = self.embedding(input_ids.to(self.device))
         packed = pack_padded_sequence(embeds, sequence_lengths, batch_first=True, enforce_sorted=False)
 
         # Initialize hidden state with zeros
@@ -82,3 +86,6 @@ if __name__ == '__main__' :
     lstm = BidirectionalLSTM(len(dataset.get_vocabulary()), 128, 4, 0, 0, device)
     for step, (sequence_lengths, inputs, labels) in enumerate(dataloader):
         predictions = lstm((sequence_lengths, inputs))
+        print(predictions)
+        print(predictions.shape)
+        quit()

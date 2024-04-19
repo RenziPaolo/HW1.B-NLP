@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, random_split
 from src.trainer import Trainer
-from src.model import BidirectionalLSTM
+from BidirectionalLSTM import BidirectionalLSTM
 from src.dataset import JSONLDataset
 from transformers import BertTokenizer
 
@@ -31,5 +31,3 @@ log_steps=100
 )
 losses = trainer.train(train_loader, val_loader, epochs=10)
 print(losses)
-
-
