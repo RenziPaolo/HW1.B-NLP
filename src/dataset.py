@@ -78,18 +78,20 @@ class JSONLDataset(Dataset):
     
     def get_vocabulary(
         self,
+        name = "torchtext",
         pad_token: str = "<pad>",
         unk_token: str = "<unk>",
         extra_tokens: list[str] = []
     ) -> Vocab:
-        """Builds a `torchtext.vocab.Vocab` object from data stored in this object."""
-        # most_common() returns a list of (token, count) pairs, so we convert them back into dictionary
-        vocab_counter = dict(Counter(token for sent in self.tokenizedData for token in sent["text"]).most_common())
-        # We build the vocabulary through a dictionary like {token: frequency, ...}
-        vocabulary = vocab(vocab_counter, min_freq=1, specials=[pad_token, unk_token, *extra_tokens])
-        # vocabulary(list of tokens) returns a list of values, so get the only one
-        vocabulary.set_default_index(vocabulary([unk_token])[0])
-        return vocabulary
+        if name == "torchtext":
+            """Builds a `torchtext.vocab.Vocab` object from data stored in this object."""
+            # most_common() returns a list of (token, count) pairs, so we convert them back into dictionary
+            vocab_counter = dict(Counter(token for sent in self.tokenizedData for token in sent["text"]).most_common())
+            # We build the vocabulary through a dictionary like {token: frequency, ...}
+            vocabulary = vocab(vocab_counter, min_freq=1, specials=[pad_token, unk_token, *extra_tokens])
+            # vocabulary(list of tokens) returns a list of values, so get the only one
+            vocabulary.set_default_index(vocabulary([unk_token])[0])
+            return vocabulary
     
     def index(self, vocabulary: Vocab) -> None:
         """Builds `self.indexedData` by converting raw samples to input_ids following `vocabulary`"""
