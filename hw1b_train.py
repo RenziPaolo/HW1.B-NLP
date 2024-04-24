@@ -6,6 +6,7 @@ from src.BidirectionalLSTM import BidirectionalLSTM
 from src.BiLSTMModel import BiLSTMModel
 from src.dataset import JSONLDataset
 import spacy
+from datetime import datetime
 
 
 if torch.cuda.is_available():
@@ -38,4 +39,11 @@ log_steps=100
 )
 
 losses = trainer.train(train_loader, val_loader, epochs=10)
+# Get the current date and time
+current_date_time = datetime.now()
 
+# Format the date as a string
+current_date_str = current_date_time.strftime("%Y-%m-%d")
+
+torch.save(lstm.state_dict(), f"./saves/lstm{current_date_str}.pth")
+print("saved!")
