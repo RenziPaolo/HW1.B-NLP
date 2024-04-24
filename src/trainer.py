@@ -9,13 +9,12 @@ class Trainer():
         self,
         model: nn.Module,
         optimizer: torch.optim.Optimizer,
-        loss_function: nn.Module,
         log_steps: int = 1_000,
         log_level: int = 2
     ):
         self.model = model
         self.optimizer = optimizer
-        self.loss_function = loss_function # this is the default loss used nearly everywhere in NLP
+        self.loss_function = nn.CrossEntropyLoss() # this is the default loss used nearly everywhere in NLP
 
         self.log_steps = log_steps
         self.log_level = log_level
@@ -38,6 +37,7 @@ class Trainer():
         assert epochs >= 1 and isinstance(epochs, int)
         if self.log_level > 0:
             print('Training ...')
+        train_loss = 0.0
 
         losses = {
             "train_losses": [],
@@ -59,8 +59,6 @@ class Trainer():
                 # We get the predicted logits from the model, with no need to perform any flattening
                 # as both predictions and labels refer to the whole sentence.
                 predictions = self.model((sequence_lengths, inputs))
-
-                
 
                 # The CrossEntropyLoss expects the predictions to be logits, i.e. non-softmaxed scores across
                 # the number of classes, and the labels to be a simple tensor of labels.
@@ -100,7 +98,7 @@ class Trainer():
         # logits [B, 2] are the logits outputted by the BiLSTM model's forward()
         # We take the argmax along the second dimension (dim=1), so we get a tensor of shape [B]
         # where each element is 0 if the 0-class had higher logit, 1 otherwise.
-        predictions = torch.argmax(logits, dim=1)
+        predictions = torch.argmax(logits, dim=-1)
         # We can then directly compare each prediction with the labels, as they are both tensors with shape [B].
         # The average of the boolean equality checks between the two is the accuracy of these predictions.
         # For example, if:
@@ -153,6 +151,5 @@ class Trainer():
         with torch.no_grad():
             sequence_lengths, inputs = batch
             logits = self.model(sequence_lengths, inputs) # [B, 2]
-            probs = torch.sigmoid(logits)
-            predictions = (probs >0.5).float # [B, 1] computed on the last dimension of the logits tensor
+            predictions = torch.argmax(logits, -1) # [B, 1] computed on the last dimension of the logits tensor
             return logits, predictions

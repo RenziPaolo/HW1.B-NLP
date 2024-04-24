@@ -13,9 +13,9 @@ class BidirectionalLSTM(nn.Module):
         hidden_size: int,
         num_layers: int,
         bilstm_dropout: float,
+        num_classes: int,
         padding_id: int,
         device: str = "cuda",
-        embedding: bool = True
     ) -> None:
 
         super(BidirectionalLSTM, self).__init__()
@@ -23,20 +23,18 @@ class BidirectionalLSTM(nn.Module):
         self.num_layers = num_layers
 
         # Embedding layer
-        self.embedding = embedding
-        if embedding:
-            self.embedding = nn.Embedding(
-                num_embeddings=vocabulary_length,
-                embedding_dim=hidden_size,
-                padding_idx=padding_id, # avoid updating the gradient of padding entries
-                device=device
-            )
+        self.embedding = nn.Embedding(
+            num_embeddings=vocabulary_length,
+            embedding_dim=hidden_size,
+            padding_idx=padding_id, # avoid updating the gradient of padding entries
+            device=device
+        )
         self.device = device
         # Bidirectional LSTM layer
         self.lstm = nn.LSTM(hidden_size, hidden_size, num_layers, batch_first=True, bidirectional=True, dropout=bilstm_dropout, device=device)
 
         # Output layer
-        self.fc = nn.Linear(hidden_size * 2, 1, device=device)
+        self.fc = nn.Linear(hidden_size * 2, 2, device=device)
 
     def forward(self, x: list[torch.Tensor, torch.Tensor]) -> torch.Tensor:
         """
@@ -50,8 +48,7 @@ class BidirectionalLSTM(nn.Module):
         """
         # Get the different parts of the batch
         sequence_lengths, input_ids  = x
-        if self.embedding:
-            embeds = self.embedding(input_ids.to(self.device))
+        embeds = self.embedding(input_ids.to(self.device))
         packed = pack_padded_sequence(embeds, sequence_lengths, batch_first=True, enforce_sorted=False)
 
         # Initialize hidden state with zeros
@@ -67,7 +64,7 @@ class BidirectionalLSTM(nn.Module):
         # Decode the hidden state of the last time step
         out = self.fc(hidden)  # out shape: (batch_size, output_size)
 
-        return out.squeeze()
+        return out
     
 # MAIN
 if __name__ == '__main__' :

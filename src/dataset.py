@@ -23,11 +23,11 @@ class JSONLDataset(Dataset):
         self.tokenizedData = []
         for sample in self.data_dict:
             text = sample['text']  # Assuming 'text' is the key for the text data
-            tokenizedText = [token for token in tokenizer.tokenize(text)]  # Tokenizing text
+            tokenizedText = [token.text for token in tokenizer(text)]  # Tokenizing text
             label = 0 if sample['label'] == 'si' else 1
             self.tokenizedData.append({'text': tokenizedText, 'label': label})
         self.indexedData = None
-        #self.index(self.get_vocabulary())
+        self.index(self.get_vocabulary())
 
     def read_json_file(self, test:  bool) -> list:
         """
@@ -62,7 +62,7 @@ class JSONLDataset(Dataset):
         """
         Return the number of samples in the dataset.
         """
-        return len(self.tokenizedData)
+        return len(self.indexedData)
 
     def __getitem__(self, idx):
         """
@@ -74,24 +74,23 @@ class JSONLDataset(Dataset):
         Returns:
         dict: Dictionary containing the sample data.
         """
-        return self.tokenizedData[idx]
+        return self.indexedData[idx]
     
     def get_vocabulary(
         self,
-        name = "torchtext",
         pad_token: str = "<pad>",
         unk_token: str = "<unk>",
         extra_tokens: list[str] = []
     ) -> Vocab:
-        if name == "torchtext":
-            """Builds a `torchtext.vocab.Vocab` object from data stored in this object."""
-            # most_common() returns a list of (token, count) pairs, so we convert them back into dictionary
-            vocab_counter = dict(Counter(token for sent in self.tokenizedData for token in sent["text"]).most_common())
-            # We build the vocabulary through a dictionary like {token: frequency, ...}
-            vocabulary = vocab(vocab_counter, min_freq=1, specials=[pad_token, unk_token, *extra_tokens])
-            # vocabulary(list of tokens) returns a list of values, so get the only one
-            vocabulary.set_default_index(vocabulary([unk_token])[0])
-            return vocabulary
+        """Builds a `torchtext.vocab.Vocab` object from data stored in this object."""
+        # most_common() returns a list of (token, count) pairs, so we convert them back into dictionary
+        vocab_counter = dict(Counter(token for sent in self.tokenizedData for token in sent["text"]).most_common())
+        # We build the vocabulary through a dictionary like {token: frequency, ...}
+        vocabulary = vocab(vocab_counter, min_freq=1, specials=[pad_token, unk_token, *extra_tokens])
+        # vocabulary(list of tokens) returns a list of values, so get the only one
+        vocabulary.set_default_index(vocabulary([unk_token])[0])
+        self.padding_id = vocabulary(["<pad>"])[0]
+        return vocabulary
     
     def index(self, vocabulary: Vocab) -> None:
         """Builds `self.indexedData` by converting raw samples to input_ids following `vocabulary`"""
@@ -117,25 +116,35 @@ class JSONLDataset(Dataset):
             return indexedData
 
 
-    def _collate_fn(self, batch: list[dict]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _collate_fn(self, raw_batch: list[dict]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Collate function to pad sequences within a batch.
+        Batches together single elements of the dataset.
+        This function:
+        - converts each sentence made up of single input_ids to a padded tensor,
+        - keeps track of the length of each sentence through `sequence_lengths`
+        - builds a `labels` tensor storing the label for each sentence
 
         Args:
-        batch (list): List of dictionaries, each containing a sample.
+            raw_batch (list[dict]): a list of elements, as returned by the `__getitem__()` function.
 
         Returns:
-        dict: Dictionary containing padded sequences.
+            A tuple of three tensors, respectively `(sequence_lengths, padded_sequence, labels)`
         """
-        if "input_ids" not in batch[0].keys():
-            batch = self.indexBatch(self.get_vocabulary(), batch)
-        sequence_lengths = torch.tensor([len(sample["input_ids"]) for sample in batch], dtype=torch.long)
-        labels = torch.tensor([sample['label'] for sample in batch])
-        padded_texts = pad_sequence( (
+        if self.padding_id is None:
+            raise RuntimeError("Padding value not set! Set it through .set_padding_id method.")
+
+        # We need these sequence lengths to construct a `torch.nn.utils.rnn.PackedSequence` in the model
+        sequence_lengths = torch.tensor([len(sample["input_ids"]) for sample in raw_batch], dtype=torch.long)
+        padded_sequence = pad_sequence(
+            (
                 torch.tensor(sample["input_ids"], dtype=torch.long, device=self.device)
-                for sample in batch
-            ), batch_first=True)
-        return  sequence_lengths, padded_texts, labels
+                for sample in raw_batch
+            ),
+            batch_first=True,
+            padding_value=self.padding_id
+        )
+        labels = torch.tensor([sample["label"] for sample in raw_batch], device=self.device, dtype=torch.long)
+        return sequence_lengths, padded_sequence, labels
 
     
 # MAIN

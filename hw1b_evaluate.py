@@ -2,7 +2,7 @@ from src.baselines import RandomBase
 from src.trainer import Trainer
 import torch
 from src.dataset import JSONLDataset
-from transformers import BertTokenizer
+import spacy
 from torch.utils.data import DataLoader
 
 if torch.cuda.is_available():
@@ -10,7 +10,7 @@ if torch.cuda.is_available():
 else:
     device = 'cpu'
 
-dataset = JSONLDataset(test=False, device=device, tokenizer=BertTokenizer.from_pretrained("dbmdz/bert-base-italian-xxl-cased"))
+dataset = JSONLDataset(test=False, device=device, tokenizer=spacy.load("it_core_news_sm"))
 dataloader = DataLoader(dataset, batch_size=128, shuffle=True, collate_fn=dataset._collate_fn)
 trainer = Trainer(
 model=RandomBase(),
