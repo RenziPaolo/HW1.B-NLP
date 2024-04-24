@@ -9,11 +9,10 @@ if torch.cuda.is_available():
     device = 'cuda'
 else:
     device = 'cpu'
-
 dataset = JSONLDataset(test=False, device=device, tokenizer=spacy.load("it_core_news_sm"))
 dataloader = DataLoader(dataset, batch_size=128, shuffle=True, collate_fn=dataset._collate_fn)
 trainer = Trainer(
-model=RandomBase(),
+model=RandomBase(device),
 optimizer=None,
 log_steps=100
 )
