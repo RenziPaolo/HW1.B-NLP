@@ -18,7 +18,9 @@ class JSONLDataset(Dataset):
         Args:
         test (bool): True if the dataset is for testing, False otherwise.
         """
+
         self.data_dict = self.read_json_file(test)
+        #
         self.device = device
         self.tokenizedData = []
         for sample in self.data_dict:
@@ -114,6 +116,9 @@ class JSONLDataset(Dataset):
                 # append the dictionary containing ids of the input tokens and label
                 indexedData.append({"input_ids": vocabulary(sample["text"]), "label": sample["label"]})
             return indexedData
+        
+    def get_max_seq_len(self):
+        return torch.max(torch.tensor([len(sample["input_ids"]) for sample in self.indexedData], dtype=torch.long)).item()
 
 
     def _collate_fn(self, raw_batch: list[dict]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:

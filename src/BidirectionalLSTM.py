@@ -69,7 +69,7 @@ class BidirectionalLSTM(nn.Module):
 # MAIN
 if __name__ == '__main__' :
     from dataset import JSONLDataset
-    from transformers import BertTokenizer
+    import spacy
     from torch.utils.data import DataLoader
     
     # Get the name of the GPU device
@@ -78,11 +78,11 @@ if __name__ == '__main__' :
     else:
         device = 'cpu'
 
-    dataset = JSONLDataset(test=True, device=device, tokenizer=BertTokenizer.from_pretrained("dbmdz/bert-base-italian-xxl-cased"))
+    dataset = JSONLDataset(test=True, device=device, tokenizer=spacy.load("it_core_news_sm"))
     dataloader = DataLoader(dataset, batch_size=128, shuffle=True, collate_fn=dataset._collate_fn)
-    lstm = BidirectionalLSTM(len(dataset.get_vocabulary()), 128, 4, 0, 0, device)
+    vocabulary = dataset.get_vocabulary()
+    lstm = BidirectionalLSTM(len(vocabulary), 1, 1, 0.5, 2, vocabulary(["<pad>"])[0], device=device)
     for step, (sequence_lengths, inputs, labels) in enumerate(dataloader):
         predictions = lstm((sequence_lengths, inputs))
-        print(predictions)
-        print(predictions.shape)
-        quit()
+        print(inputs)
+        
